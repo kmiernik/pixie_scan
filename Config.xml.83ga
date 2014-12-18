@@ -300,7 +300,11 @@
                 <Line min="1346" max="1351"/>
                 <Line min="1370" max="1373"/>
             </Gate>
-    </GammaGates>
+        </GammaGates>
+
+    <Reject>
+        <Time start="0" end="1275"/>
+    </Reject>
 
     <Notebook file='83ga_notes.txt' mode='a'/>
 
