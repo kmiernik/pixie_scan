@@ -1,3 +1,10 @@
+/** \file TreeCorrelator.cpp
+ * \brief A class to handle complex correlations between various processors
+ *
+ * This guy was originally named "NewCorrelator.cpp" it was renamed.
+ * \author K. A. Miernik
+ * \date August 19, 2012
+ */
 #include "TreeCorrelator.hpp"
 #include "Globals.hpp"
 #include "Exceptions.hpp"
@@ -5,7 +12,7 @@
 
 using namespace std;
 
-void Walker::parsePlace(pugi::xml_node node, string parent, bool verbose) {
+void Walker::parsePlace(pugi::xml_node node, std::string parent, bool verbose) {
     map<string, string> params;
     params["parent"] = parent;
     params["type"] = "";
@@ -13,15 +20,14 @@ void Walker::parsePlace(pugi::xml_node node, string parent, bool verbose) {
     params["coincidence"] = "true";
     params["fifo"] = "2";
     params["init"] = "false";
-    for (pugi::xml_attribute attr = node.first_attribute();
-         attr;
+    for (pugi::xml_attribute attr = node.first_attribute(); attr;
          attr = attr.next_attribute()) {
         params[attr.name()] = attr.value();
     }
     TreeCorrelator::get()->createPlace(params, verbose);
 }
 
-void Walker::traverseTree(pugi::xml_node node, string parent, bool verbose) {
+void Walker::traverseTree(pugi::xml_node node, std::string parent, bool verbose) {
     for (pugi::xml_node child = node.child("Place");
          child;
          child = child.next_sibling("Place")) {
@@ -34,7 +40,6 @@ TreeCorrelator* TreeCorrelator::instance = NULL;
 
 PlaceBuilder TreeCorrelator::builder = PlaceBuilder();
 
-/** Instance is created upon first call */
 TreeCorrelator* TreeCorrelator::get() {
     if (!instance) {
         instance = new TreeCorrelator();
@@ -42,7 +47,7 @@ TreeCorrelator* TreeCorrelator::get() {
     return instance;
 }
 
-Place* TreeCorrelator::place(string name) {
+Place* TreeCorrelator::place(std::string name) {
     map<string, Place*>::iterator element = places_.find(name);
     if (element == places_.end()) {
         stringstream ss;
@@ -53,14 +58,14 @@ Place* TreeCorrelator::place(string name) {
     return element->second;
 }
 
-void TreeCorrelator::addChild(string parent, string child, 
+void TreeCorrelator::addChild(std::string parent, std::string child,
                              bool coin, bool verbose) {
     if (places_.count(parent) == 1 && places_.count(child) == 1) {
         place(parent)->addChild(place(child), coin);
         if (verbose) {
             Messenger m;
             stringstream ss;
-            ss << "Setting " << child 
+            ss << "Setting " << child
                  << " as a child of " << parent;
             m.detail(ss.str(), 1);
         }
@@ -72,7 +77,7 @@ void TreeCorrelator::addChild(string parent, string child,
     }
 }
 
-vector<string> TreeCorrelator::split_names(string name) {
+vector<string> TreeCorrelator::split_names(std::string name) {
     vector<string> names;
     vector<string> name_tokens = strings::tokenize(name, "_");
 
@@ -89,7 +94,7 @@ vector<string> TreeCorrelator::split_names(string name) {
             for (vector<string>::iterator itc = comma_token.begin();
                     itc != comma_token.end();
                     ++itc) {
-                vector<string> range_tokens = 
+                vector<string> range_tokens =
                                         strings::tokenize((*itc), "-");
                 int range_min = strings::to_int(range_tokens[0]);
                 int range_max = range_min;
@@ -104,14 +109,14 @@ vector<string> TreeCorrelator::split_names(string name) {
             }
         } else {
             names.push_back(base_name + name_tokens.back());
-        } 
+        }
     } else {
         names.push_back(name);
     }
     return names;
 }
 
-void TreeCorrelator::createPlace(map<string, string>& params,
+void TreeCorrelator::createPlace(std::map<std::string, std::string>& params,
                                  bool verbose) {
     bool replace = false;
     if (params["replace"] != "")
@@ -126,7 +131,7 @@ void TreeCorrelator::createPlace(map<string, string>& params,
             if (replace) {
                 if (places_.count((*it)) != 1) {
                     stringstream ss;
-                    ss << "TreeCorrelator: cannot replace Place " << (*it) 
+                    ss << "TreeCorrelator: cannot replace Place " << (*it)
                        << ", it doesn't exist";
                     throw TreeCorrelatorException(ss.str());
                 }
@@ -188,7 +193,7 @@ void TreeCorrelator::buildTree() {
 }
 
 TreeCorrelator::~TreeCorrelator() {
-    for (map<string, Place*>::iterator it = places_.begin(); 
+    for (map<string, Place*>::iterator it = places_.begin();
          it != places_.end(); ++it) {
         delete it->second;
     }

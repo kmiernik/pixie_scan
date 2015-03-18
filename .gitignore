@@ -1,21 +1,31 @@
-# ignore these files
+#Build files
 *.o
-html/
-latex/
+pixie_ldf_*
+
+#Backup files from various editors
+*.save
 *~
 *.swp
+*.layout
+
+#Documentation directories and files
+html/
+latex/
+tmp/
+doc/classdiagramRawEvent.svg
+config/cfgs
+optional
+ValgrindOut.xml
+
+#DAMM files
+*.drr
+*.his
+*.list
+*.log
+
 # Data directories
 HIS
 LDF
 HIS/*
 LDF/*
-# Large data files
-*.ldf
-*.his
-*.drr
-*.list
-*.log
-# Executable
-pixie_ldf_c
-# ctags file
-tags
+data

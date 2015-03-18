@@ -1,40 +1,8 @@
-/*    the detector driver class.
-
-      The main analysis program.  A complete event is create in PixieStd
-      passed into this class.  See manual for further details.
-
-      SNL - 7-2-07
-      SNL - 7-12-07
-            Add root analysis. If the ROOT program has been
-            detected on the computer system the and the
-            makefile has the useroot flag declared, ROOT
-            analysis will be included.
-      DTM - Oct. '09
-            Significant structural/cosmetic changes. Event processing is
-	    now primarily handled by individual event processors which
-	    handle their own DetectorDrivers
-
-      SVP - Oct. '10
-            Added the VandleProcessor for use with VANDLE.
-            Added the PulserProcessor for use with Pulsers.
-            Added the WaveformProcessor to determine ps time resolutions.
-      KM  - Dec. '12, Jan. '13 
-            Huge changes due to switching to XML configuration file.
-            See git commits comments.
+/*! \file DetectorDriver.cpp
+ *   \brief Main driver for event processing
+ * \author S. N. Liddick
+ * \date July 2, 2007
 */
-
-/*!
-  \file DetectorDriver.cpp
-
-  \brief event processing
-
-  In this file are the details for experimental processing of a raw event
-  created by ScanList() in PixieStd.cpp.  Event processing includes things
-  which do not change from experiment to experiment (such as energy
-  calibration and raw parameter plotting) and things that do (differences
-  between MTC and RMS experiment, for example).
-*/
-
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
@@ -49,20 +17,18 @@
 #include "DetectorDriver.hpp"
 #include "DetectorLibrary.hpp"
 #include "Exceptions.hpp"
+#include "HighResTimingData.hpp"
 #include "RandomPool.hpp"
 #include "RawEvent.hpp"
-#include "TimingInformation.hpp"
 #include "TreeCorrelator.hpp"
 
 #include "BeamLogicProcessor.hpp"
 #include "BetaScintProcessor.hpp"
-#include "Beta4Hen3Processor.hpp"
+#include "DoubleBetaProcessor.hpp"
 #include "DssdProcessor.hpp"
-#include "Dssd4SHEProcessor.hpp"
 #include "Hen3Processor.hpp"
 #include "GeProcessor.hpp"
 #include "GeCalibProcessor.hpp"
-#include "Ge4Hen3Processor.hpp"
 #include "ImplantSsdProcessor.hpp"
 #include "IonChamberProcessor.hpp"
 #include "LiquidScintProcessor.hpp"
@@ -72,55 +38,44 @@
 #include "PositionProcessor.hpp"
 #include "PulserProcessor.hpp"
 #include "SsdProcessor.hpp"
+#include "TeenyVandleProcessor.hpp"
 #include "TraceFilterer.hpp"
 #include "TriggerLogicProcessor.hpp"
 #include "VandleProcessor.hpp"
+#include "ValidProcessor.hpp"
 
 #include "CfdAnalyzer.hpp"
 #include "DoubleTraceAnalyzer.hpp"
 #include "FittingAnalyzer.hpp"
 #include "TauAnalyzer.hpp"
 #include "TraceAnalyzer.hpp"
-#include "TraceExtracter.hpp"
+#include "TraceExtractor.hpp"
 #include "WaveformAnalyzer.hpp"
 
 #ifdef useroot
 #include "RootProcessor.hpp"
-#include "ScintRoot.hpp"
-#include "VandleRoot.hpp"
 #endif
 
 using namespace std;
 using namespace dammIds::raw;
 
-/*!
-  detector driver constructor
-
-  Creates instances of all event processors
-*/
-
-using namespace dammIds::raw;
-
 DetectorDriver* DetectorDriver::instance = NULL;
 
-/** Instance is created upon first call */
 DetectorDriver* DetectorDriver::get() {
-    if (!instance) {
+    if (!instance)
         instance = new DetectorDriver();
-    }
     return instance;
 }
 
-DetectorDriver::DetectorDriver() : histo(OFFSET, RANGE, "DetectorDriver") 
-{
+DetectorDriver::DetectorDriver() : histo(OFFSET, RANGE, "DetectorDriver") {
     Messenger m;
     try {
         m.start("Loading Processors");
         LoadProcessors(m);
     } catch (GeneralException &e) {
-        // Any exception in registering plots in Processors 
-        // and possible other exceptions in creating Processors
-        // will be intercepted here
+        /// Any exception in registering plots in Processors
+        /// and possible other exceptions in creating Processors
+        /// will be intercepted here
         m.fail();
         cout << "Exception caught at DetectorDriver::DetectorDriver" << endl;
         cout << "\t" << e.what() << endl;
@@ -132,13 +87,7 @@ DetectorDriver::DetectorDriver() : histo(OFFSET, RANGE, "DetectorDriver")
     m.done();
 }
 
-/*!
-  detector driver deconstructor
-
-  frees memory for all event processors
- */
-DetectorDriver::~DetectorDriver()
-{
+DetectorDriver::~DetectorDriver() {
     for (vector<EventProcessor *>::iterator it = vecProcess.begin();
 	 it != vecProcess.end(); it++) {
         delete *it;
@@ -166,10 +115,7 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
         throw IOException(ss.str());
     }
 
-    /** Force to create Detector Library before loading processors.
-     * It is not needed but the output looks nicer ;)
-     */
-    DetectorLibrary* modChan = DetectorLibrary::get();
+    DetectorLibrary::get();
 
     pugi::xml_node driver = doc.child("Configuration").child("DetectorDriver");
     for (pugi::xml_node processor = driver.child("Processor"); processor;
@@ -178,87 +124,31 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
 
         m.detail("Loading " + name);
         if (name == "BeamLogicProcessor") {
-            vecProcess.push_back(new BeamLogicProcessor()); 
+            vecProcess.push_back(new BeamLogicProcessor());
         }
-        else if (name == "BetaScintProcessor" || name == "Beta4Hen3Processor") {
-            double gamma_beta_limit = 
+        else if (name == "BetaScintProcessor") {
+            double gamma_beta_limit =
                 processor.attribute("gamma_beta_limit").as_double(-1);
             if (gamma_beta_limit == -1) {
                 gamma_beta_limit = 200e-9;
                 m.warning("Using default gamme_beta_limit = 200e-9", 1);
             }
 
-            double energy_contraction = 
+            double energy_contraction =
                 processor.attribute("energy_contraction").as_double(-1);
             if (energy_contraction == -1) {
                 energy_contraction = 1;
                 m.warning("Using default energy contraction = 1", 1);
             }
 
-            if (name == "BetaScintProcessor") 
+            if (name == "BetaScintProcessor")
                 vecProcess.push_back(
                         new BetaScintProcessor(gamma_beta_limit,
                                                energy_contraction));
-            else if (name == "Beta4Hen3Processor")
-                vecProcess.push_back(
-                        new Beta4Hen3Processor(gamma_beta_limit,
-                                               energy_contraction));
         } else if (name == "DssdProcessor") {
             vecProcess.push_back(new DssdProcessor());
-        } else if (name == "Dssd4SHEProcessor") {
-            double front_back_correlation_time = 
-               processor.attribute("front_back_correlation_time").as_double(-1);
-            if (front_back_correlation_time == -1) {
-                front_back_correlation_time = 300e-9;
-                m.warning("Using default front_back_correlation_time = 300e-9",
-                          1);
-            }
-            double delta_energy = 
-               processor.attribute("delta_energy").as_double(-1);
-            if (delta_energy == -1) {
-                delta_energy = 300;
-                m.warning("Using default delta_energy = 300", 1);
-            }
-            double high_energy_cut = 
-                processor.attribute("high_energy_cut").as_double(-1);
-            if (high_energy_cut == -1) {
-                high_energy_cut = 15000.0;
-                m.warning("Using default high_energy_cut = 15000", 1);
-            }
-            double low_energy_cut = 
-                processor.attribute("low_energy_cut").as_double(-1);
-            if (low_energy_cut == -1) {
-                low_energy_cut = 8000.0;
-                m.warning("Using default low_energy_cut = 8000", 1);
-            }
-            double fission_energy_cut = 
-                processor.attribute("fission_energy_cut").as_double(-1);
-            if (low_energy_cut == -1) {
-                low_energy_cut = 50000.0;
-                m.warning("Using default fission_energy_cut = 50000", 1);
-            }
-
-            stringstream ss;
-            unsigned num_front_strips =  
-                modChan->GetLocations("dssd_front", "dssd_front").size();
-            ss << "Found " << num_front_strips << " front strips (Y)";
-            m.detail(ss.str(), 1);
-            unsigned num_back_strips =  
-                modChan->GetLocations("dssd_back", "dssd_back").size();
-            ss.str("");
-            ss << "Found " << num_back_strips << " back strips (X)";
-            m.detail(ss.str(), 1);
-
-            vecProcess.push_back(new
-                    Dssd4SHEProcessor(front_back_correlation_time,
-                                      delta_energy,
-                                      high_energy_cut,
-                                      low_energy_cut,
-                                      fission_energy_cut,
-                                      num_back_strips,
-                                      num_front_strips));
-        } else if (name == "GeProcessor" || name == "Ge4Hen3Processor") {
-            double gamma_threshold = 
+        } else if (name == "GeProcessor") {
+            double gamma_threshold =
                 processor.attribute("gamma_threshold").as_double(-1);
             if (gamma_threshold == -1) {
                 gamma_threshold = 1.0;
@@ -276,19 +166,19 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
                 high_ratio = 3.0;
                 m.warning("Using default high_ratio = 3.0", 1);
             }
-            double sub_event = 
+            double sub_event =
                 processor.attribute("sub_event").as_double(-1);
             if (sub_event == -1) {
                 sub_event = 100e-9;
                 m.warning("Using default sub_event = 100e-9", 1);
             }
-            double gamma_beta_limit = 
+            double gamma_beta_limit =
                 processor.attribute("gamma_beta_limit").as_double(-1);
             if (gamma_beta_limit == -1) {
                 gamma_beta_limit = 200e-9;
                 m.warning("Using default gamme_beta_limit = 200e-9", 1);
             }
-            double gamma_gamma_limit = 
+            double gamma_gamma_limit =
                 processor.attribute("gamma_gamma_limit").as_double(-1);
             if (gamma_gamma_limit == -1) {
                 gamma_gamma_limit = 200e-9;
@@ -323,42 +213,33 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
                             low_ratio, high_ratio, sub_event,
                             gamma_beta_limit, gamma_gamma_limit,
                             cycle_gate1_min, cycle_gate1_max,
-                            cycle_gate2_min, cycle_gate2_max)); 
-            } else if (name == "Ge4Hen3Processor") {
-                vecProcess.push_back(new Ge4Hen3Processor(gamma_threshold,
-                            low_ratio, high_ratio, sub_event,
-                            gamma_beta_limit, gamma_gamma_limit, 
-                            cycle_gate1_min, cycle_gate1_max,
-                            cycle_gate2_min, cycle_gate2_max)); 
-
+                            cycle_gate2_min, cycle_gate2_max));
             }
         } else if (name == "GeCalibProcessor") {
-            double gamma_threshold = 
+            double gamma_threshold =
                 processor.attribute("gamma_threshold").as_double(1);
             double low_ratio =
                 processor.attribute("low_ratio").as_double(1);
             double high_ratio =
                 processor.attribute("high_ratio").as_double(3);
             vecProcess.push_back(new GeCalibProcessor(gamma_threshold,
-                        low_ratio, high_ratio)); 
+                        low_ratio, high_ratio));
         } else if (name == "Hen3Processor") {
-            vecProcess.push_back(new Hen3Processor()); 
+            vecProcess.push_back(new Hen3Processor());
         } else if (name == "ImplantSsdProcessor") {
-            vecProcess.push_back(new ImplantSsdProcessor()); 
+            vecProcess.push_back(new ImplantSsdProcessor());
         } else if (name == "IonChamberProcessor") {
-            vecProcess.push_back(new IonChamberProcessor()); 
+            vecProcess.push_back(new IonChamberProcessor());
         } else if (name == "LiquidScintProcessor") {
             vecProcess.push_back(new LiquidScintProcessor());
         } else if (name == "LogicProcessor") {
-            vecProcess.push_back(new LogicProcessor()); 
+            vecProcess.push_back(new LogicProcessor());
         } else if (name == "McpProcessor") {
-            vecProcess.push_back(new McpProcessor()); 
+            vecProcess.push_back(new McpProcessor());
         } else if (name == "MtcProcessor") {
             /** Default value for as_bool() is false */
-            bool double_stop = 
-                processor.attribute("double_stop").as_bool();
-            bool double_start = 
-                processor.attribute("double_start").as_bool();
+            bool double_stop = processor.attribute("double_stop").as_bool();
+            bool double_start = processor.attribute("double_start").as_bool();
             vecProcess.push_back(new MtcProcessor(double_stop, double_start));
         } else if (name == "NeutronScintProcessor") {
             vecProcess.push_back(new NeutronScintProcessor());
@@ -371,15 +252,20 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
         } else if (name == "TriggerLogicProcessor") {
             vecProcess.push_back(new TriggerLogicProcessor());
         } else if (name == "VandleProcessor") {
-            vecProcess.push_back(new VandleProcessor());
+            double res = processor.attribute("res").as_double(2.0);
+            double offset = processor.attribute("offset").as_double(200.0);
+            unsigned int numStarts = processor.attribute("NumStarts").as_int(2);
+            vector<string> types =
+                strings::tokenize(processor.attribute("types").as_string(),",");
+            vecProcess.push_back(new VandleProcessor(types, res, offset, numStarts));
+        } else if (name == "TeenyVandleProcessor") {
+            vecProcess.push_back(new TeenyVandleProcessor());
+        } else if (name == "DoubleBetaProcessor") {
+            vecProcess.push_back(new DoubleBetaProcessor());
         }
 #ifdef useroot
         else if (name == "RootProcessor") {
             vecProcess.push_back(new RootProcessor("tree.root", "tree"));
-        } else if (name == "ScintROOT") {
-            vecProcess.push_back(new ScintROOT());
-        } else if (name == "VandleROOT") {
-            vecProcess.push_back(new VandleROOT());
         }
 #endif
         else {
@@ -404,7 +290,7 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
         string name = analyzer.attribute("name").value();
 
         m.detail("Loading " + name);
-        if (name == "TraceFilterer" || 
+        if (name == "TraceFilterer" ||
             name == "DoubleTraceAnalyzer") {
 
             double gain_match = analyzer.attribute("gain_match").as_double(-1);
@@ -422,7 +308,7 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
                 fast_gap = 10;
                 m.warning("Using fast_gap = 10", 1);
             }
-            int fast_threshold = 
+            int fast_threshold =
                 analyzer.attribute("fast_threshold").as_int(-1);
             if (fast_threshold == -1) {
                 fast_threshold = 50;
@@ -448,44 +334,39 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
                 slow_gap = 20;
                 m.warning("Using slow_gap = 20", 1);
             }
-            int slow_threshold = 
+            int slow_threshold =
                 analyzer.attribute("slow_threshold").as_int(-1);
             if (slow_threshold == -1) {
                 slow_threshold = 10;
                 m.warning("Using slow_threshold = 10", 1);
             }
 
-            if (name == "TraceFilterer") 
+            if (name == "TraceFilterer")
                 vecAnalyzer.push_back(new TraceFilterer(
                             gain_match,
-                            fast_rise, fast_gap, fast_threshold, 
+                            fast_rise, fast_gap, fast_threshold,
                             energy_rise, energy_gap,
                             slow_rise, slow_gap, slow_threshold));
             else if (name == "DoubleTraceAnalyzer")
                 vecAnalyzer.push_back(new DoubleTraceAnalyzer(
                             gain_match,
-                            fast_rise, fast_gap, fast_threshold, 
+                            fast_rise, fast_gap, fast_threshold,
                             energy_rise, energy_gap,
                             slow_rise, slow_gap, slow_threshold));
-
         } else if (name == "TauAnalyzer") {
             vecAnalyzer.push_back(new TauAnalyzer());
-        } else if (name == "TraceExtracter") {
+        } else if (name == "TraceExtractor") {
             string type = analyzer.attribute("type").as_string();
             string subtype = analyzer.attribute("subtype").as_string();
 
-            vecAnalyzer.push_back(new TraceExtracter(type, subtype));
-        }
-        else if (name == "WaveformAnalyzer") {
+            vecAnalyzer.push_back(new TraceExtractor(type, subtype));
+        } else if (name == "WaveformAnalyzer") {
             vecAnalyzer.push_back(new WaveformAnalyzer());
-        }
-        else if (name == "FittingAnalyzer") {
+        } else if (name == "FittingAnalyzer") {
             vecAnalyzer.push_back(new FittingAnalyzer());
-        }
-        else if (name == "CfdAnalyzer") {
+        } else if (name == "CfdAnalyzer") {
             vecAnalyzer.push_back(new CfdAnalyzer());
-        }
-        else {
+        } else {
             stringstream ss;
             ss << "DetectorDriver: unknown analyzer type" << name;
             throw GeneralException(ss.str());
@@ -502,33 +383,24 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
     }
 }
 
-/*!
-  Called from PixieStd.cpp during initialization.
-  The calibration file cal.txt is read using the function ReadCal() and 
-  checked to make sure that all channels have a calibration.
-*/
-
-int DetectorDriver::Init(RawEvent& rawev)
-{
-    // initialize the trace analysis routine
+int DetectorDriver::Init(RawEvent& rawev) {
     for (vector<TraceAnalyzer *>::iterator it = vecAnalyzer.begin();
 	 it != vecAnalyzer.end(); it++) {
-	(*it)->Init();
-	(*it)->SetLevel(20); //! Plot traces
+        (*it)->Init();
+        (*it)->SetLevel(20);
     }
 
-    // initialize processors in the event processing vector
     for (vector<EventProcessor *>::iterator it = vecProcess.begin();
          it != vecProcess.end(); it++) {
-        (*it)->Init(rawev);	
+        (*it)->Init(rawev);
     }
 
     try {
         ReadCalXml();
         ReadWalkXml();
     } catch (GeneralException &e) {
-        // Any exception in reading calibration and walk correction
-        // will be intercepted here
+        //! Any exception in reading calibration and walk correction
+        //! will be intercepted here
         cout << endl;
         cout << "Exception caught at DetectorDriver::Init" << endl;
         cout << "\t" << e.what() << endl;
@@ -540,50 +412,24 @@ int DetectorDriver::Init(RawEvent& rawev)
         cout << "\t" << w.what() << endl;
     }
 
-    TimingInformation readFiles;
-    readFiles.ReadTimingConstants();
-    readFiles.ReadTimingCalibration();
-
     rawev.GetCorrelator().Init(rawev);
-
     return 0;
 }
 
-/*!
-  \brief controls event processing
-
-  The ProcessEvent() function is called from ScanList() in PixieStd.cpp
-  after an event has been constructed. This function is passed the mode
-  the analysis is currently in (the options are either "scan" or
-  "standaloneroot").  The function checks the thresholds for the individual
-  channels in the event and calibrates their energies. 
-  The raw and calibrated energies are plotted if the appropriate DAMM spectra
-  have been created.  Then experiment specific processing is performed.  
-  Currently, both RMS and MTC processing is available.  After all processing
-  has occured, appropriate plotting routines are called.
-*/
-int DetectorDriver::ProcessEvent(RawEvent& rawev){   
-    /*
-      Begin the event processing looping over all the channels
-      that fired in this particular event.
-    */
+int DetectorDriver::ProcessEvent(RawEvent& rawev) {
     plot(dammIds::raw::D_NUMBER_OF_EVENTS, dammIds::GENERIC_CHANNEL);
-    
+
     try {
         for (vector<ChanEvent*>::const_iterator it = rawev.GetEventList().begin();
             it != rawev.GetEventList().end(); ++it) {
-            string place = (*it)->GetChanID().GetPlaceName();
-
-            // skip empty channel
-            if (place == "__-1")
-                continue;
-
-            // check threshold and calibrate
             PlotRaw((*it));
             ThreshAndCal((*it), rawev);
             PlotCal((*it));
 
-            // Do not activate places if saturated or pileup
+            string place = (*it)->GetChanID().GetPlaceName();
+            if (place == "__-1")
+                continue;
+
             if ( (*it)->IsSaturated() || (*it)->IsPileup() )
                 continue;
 
@@ -593,19 +439,18 @@ int DetectorDriver::ProcessEvent(RawEvent& rawev){
 
             EventData data(time, energy, location);
             TreeCorrelator::get()->place(place)->activate(data);
-        } 
-    
-        // have each processor in the event processing vector handle the event
-        /* First round is preprocessing, where process result must be guaranteed
-        * to not to be dependent on results of other Processors. */
+        }
+
+        //!First round is preprocessing, where process result must be guaranteed
+        //!to not to be dependent on results of other Processors.
         for (vector<EventProcessor*>::iterator iProc = vecProcess.begin();
         iProc != vecProcess.end(); iProc++) {
             if ( (*iProc)->HasEvent() ) {
                 (*iProc)->PreProcess(rawev);
             }
         }
-        /* In the second round the Process is called, which may depend on other
-        * Processors. */
+        ///In the second round the Process is called, which may depend on other
+        ///Processors.
         for (vector<EventProcessor *>::iterator iProc = vecProcess.begin();
         iProc != vecProcess.end(); iProc++) {
             if ( (*iProc)->HasEvent() ) {
@@ -613,8 +458,8 @@ int DetectorDriver::ProcessEvent(RawEvent& rawev){
             }
         }
     } catch (GeneralException &e) {
-        // Any exception in activation of basic places, PreProcess and Process
-        // will be intercepted here
+        /// Any exception in activation of basic places, PreProcess and Process
+        /// will be intercepted here
         cout << "Exception caught at DetectorDriver::ProcessEvent" << endl;
         cout << "\t" << e.what() << endl;
         exit(EXIT_FAILURE);
@@ -623,15 +468,13 @@ int DetectorDriver::ProcessEvent(RawEvent& rawev){
         cout << "\t" << w.what() << endl;
     }
 
-    return 0;   
+    return 0;
 }
 
-void DetectorDriver::DeclarePlots()
-{
+void DetectorDriver::DeclarePlots() {
     try {
         DetectorLibrary* modChan = DetectorLibrary::get();
 
-        // Declare plots for each channel
         DeclareHistogram1D(D_HIT_SPECTRUM, S7, "channel hit spectrum");
         DeclareHistogram1D(D_SUBEVENT_GAP, SE,
                            "time btwn chan-in event,10ns bin");
@@ -650,12 +493,12 @@ void DetectorDriver::DeclarePlots()
 
         DetectorLibrary::size_type maxChan = modChan->size();
 
-        for (DetectorLibrary::size_type i = 0; i < maxChan; i++) {	 
+        for (DetectorLibrary::size_type i = 0; i < maxChan; i++) {
             if (!modChan->HasValue(i)) {
                 continue;
             }
-            stringstream idstr; 
-            
+            stringstream idstr;
+
             const Identifier &id = modChan->at(i);
 
             idstr << "M" << modChan->ModuleFromIndex(i)
@@ -671,13 +514,11 @@ void DetectorDriver::DeclarePlots()
                                ("Scalar " + idstr.str()).c_str() );
             if (Globals::get()->revision() == "A")
                 DeclareHistogram1D(D_TIME + i, SE,
-                                ("Time " + idstr.str()).c_str() ); 
+                                ("Time " + idstr.str()).c_str() );
             DeclareHistogram1D(D_CAL_ENERGY + i, SE,
                                ("CalE " + idstr.str()).c_str() );
         }
 
-        // Now declare histograms present in all used analyzers and
-        // processors
         for (vector<TraceAnalyzer *>::const_iterator it = vecAnalyzer.begin();
              it != vecAnalyzer.end(); it++) {
             (*it)->DeclarePlots();
@@ -687,32 +528,15 @@ void DetectorDriver::DeclarePlots()
              it != vecProcess.end(); it++) {
             (*it)->DeclarePlots();
         }
-        
+
     } catch (exception &e) {
-        // Any exception in histogram declaration will be intercepted here
         cout << "Exception caught at DetectorDriver::DeclarePlots" << endl;
         cout << "\t" << e.what() << endl;
         exit(EXIT_FAILURE);
     }
 }
 
-// sanity check for all our expectations
-void DetectorDriver::SanityCheck(void) const
-{
-    /** Use Exceptions to throw an exception here if sanity check was 
-     * not succesful */
-}
-
-/*!
-  \brief check threshold and calibrate each channel.
-
-  Check the thresholds and calibrate the energy for each channel using the
-  calibrations contained in the calibration vector filled during ReadCal()
-*/
-
-int DetectorDriver::ThreshAndCal(ChanEvent *chan, RawEvent& rawev)
-{   
-    // retrieve information about the channel
+int DetectorDriver::ThreshAndCal(ChanEvent *chan, RawEvent& rawev) {
     Identifier chanId = chan->GetChanID();
     int id            = chan->GetID();
     string type       = chanId.GetType();
@@ -724,32 +548,29 @@ int DetectorDriver::ThreshAndCal(ChanEvent *chan, RawEvent& rawev)
 
     double energy = 0.0;
 
-    if (type == "ignore" || type == "") {
+    if (type == "ignore" || type == "")
         return 0;
-    }
-    /*
-      If the channel has a trace get it, analyze it and set the energy.
-    */
+
     if ( !trace.empty() ) {
         plot(D_HAS_TRACE, id);
 
         for (vector<TraceAnalyzer *>::iterator it = vecAnalyzer.begin();
-            it != vecAnalyzer.end(); it++) {	
+            it != vecAnalyzer.end(); it++) {
                 (*it)->Analyze(trace, type, subtype);
         }
 
-        if (trace.HasValue("filterEnergy") ) {     
+        if (trace.HasValue("filterEnergy") ) {
             if (trace.GetValue("filterEnergy") > 0) {
                 energy = trace.GetValue("filterEnergy");
                 plot(D_FILTER_ENERGY + id, energy);
 
                 /** These plots are used to determine (or check) the
-                 * gain_match parameter to match the filter 
+                 * gain_match parameter to match the filter
                  * and onboard amplitudes
                  */
                 using namespace dammIds::trace::tracefilterer;
                 double board_energy = chan->GetEnergy();
-                trace.plot(DD_ENERGY__BOARD_FILTER, 
+                trace.plot(DD_ENERGY__BOARD_FILTER,
                             board_energy / 10.0, energy / 10.0);
                 trace.plot(D_RATIO_BOARD_FILTER,
                             board_energy / energy * 100.0);
@@ -769,33 +590,33 @@ int DetectorDriver::ThreshAndCal(ChanEvent *chan, RawEvent& rawev)
                 stringstream energyCalName;
                 energyCalName << "filterEnergy" << i + 1 << "Cal";
                 trace.SetValue(energyCalName.str(),
-                    cali.GetCalEnergy(chanId, 
+                    cali.GetCalEnergy(chanId,
                                       trace.GetValue(energyName.str())));
             }
         }
 
-        if (trace.HasValue("calcEnergy") ) {	    
+        if (trace.HasValue("calcEnergy") ) {
             energy = trace.GetValue("calcEnergy");
             chan->SetEnergy(energy);
         } else if (!trace.HasValue("filterEnergy")) {
             energy = chan->GetEnergy() + randoms->Get();
-            energy /= ChanEvent::pixieEnergyContraction;
+            energy /= Globals::get()->energyContraction();
         }
 
         if (trace.HasValue("phase") ) {
             double phase = trace.GetValue("phase");
-            chan->SetHighResTime( phase * Globals::get()->adcClockInSeconds() + 
+            chan->SetHighResTime( phase * Globals::get()->adcClockInSeconds() +
                                   chan->GetTrigTime() *
                                   Globals::get()->filterClockInSeconds());
         }
 
     } else {
-        // otherwise, use the Pixie on-board calculated energy
-        // add a random number to convert an integer value to a 
-        //   uniformly distributed floating point
+        /// otherwise, use the Pixie on-board calculated energy
+        /// add a random number to convert an integer value to a
+        ///   uniformly distributed floating point
 
         energy = chan->GetEnergy() + randoms->Get();
-        energy /= ChanEvent::pixieEnergyContraction;
+        energy /= Globals::get()->energyContraction();
     }
 
     /** Calibrate energy and apply the walk correction. */
@@ -805,55 +626,41 @@ int DetectorDriver::ThreshAndCal(ChanEvent *chan, RawEvent& rawev)
     chan->SetCalEnergy(cali.GetCalEnergy(chanId, energy));
     chan->SetCorrectedTime(time - walk_correction);
 
-    /*
-      update the detector summary
-    */    
     rawev.GetSummary(type)->AddEvent(chan);
     DetectorSummary *summary;
-    
+
     summary = rawev.GetSummary(type + ':' + subtype, false);
     if (summary != NULL)
         summary->AddEvent(chan);
 
     if(hasStartTag) {
-        summary = 
+        summary =
             rawev.GetSummary(type + ':' + subtype + ':' + "start", false);
         if (summary != NULL)
             summary->AddEvent(chan);
     }
-    
+
     return 1;
 }
 
-/*!
-  Plot the raw energies of each channel into the damm spectrum number assigned
-  to it in the map file with an offset as defined in DammPlotIds.hpp
-*/
-int DetectorDriver::PlotRaw(const ChanEvent *chan)
-{
+int DetectorDriver::PlotRaw(const ChanEvent *chan) {
     int id = chan->GetID();
-    float energy = chan->GetEnergy() / ChanEvent::pixieEnergyContraction;
-    
+    float energy = chan->GetEnergy() / Globals::get()->energyContraction();
+
     plot(D_RAW_ENERGY + id, energy);
-    
+
     return 0;
 }
 
-/*!
-  Plot the calibrated energies of each channel into the damm spectrum number
-  assigned to it in the map file with an offset as defined in DammPlotIds.hpp
-*/
-int DetectorDriver::PlotCal(const ChanEvent *chan)
-{
+int DetectorDriver::PlotCal(const ChanEvent *chan) {
     int id = chan->GetID();
     float calEnergy = chan->GetCalEnergy();
-    
+
     plot(D_CAL_ENERGY + id, calEnergy);
     return 0;
 }
 
-vector<EventProcessor *> DetectorDriver::GetProcessors(const string& type) const
-{
+vector<EventProcessor *> DetectorDriver::GetProcessors(const std::string& type) const {
   vector<EventProcessor *> retVec;
 
   for (vector<EventProcessor *>::const_iterator it = vecProcess.begin();
@@ -881,7 +688,7 @@ void DetectorDriver::ReadCalXml() {
 
     pugi::xml_node map = doc.child("Configuration").child("Map");
 
-    /* Note that before this reading in of the xml file, it was already
+    /** Note that before this reading in of the xml file, it was already
      * processed for the purpose of creating the channels map.
      * Some sanity checks (module and channel number) were done there
      * so they are not repeated here/
@@ -900,7 +707,7 @@ void DetectorDriver::ReadCalXml() {
                 cal; cal = cal.next_sibling("Calibration")) {
                 string model = cal.attribute("model").as_string("None");
                 double min = cal.attribute("min").as_double(0);
-                double max = 
+                double max =
                   cal.attribute("max").as_double(numeric_limits<double>::max());
 
                 stringstream pars(cal.text().as_string());
@@ -908,14 +715,14 @@ void DetectorDriver::ReadCalXml() {
                 while (true) {
                     double p;
                     pars >> p;
-                    if (pars) 
+                    if (pars)
                         parameters.push_back(p);
                     else
                         break;
                 }
                 if (verbose) {
                     stringstream ss;
-                    ss << "Module " << module_number << ", channel " 
+                    ss << "Module " << module_number << ", channel "
                        << ch_number << ": ";
                     ss << " model-" << model;
                     for (vector<double>::iterator it = parameters.begin();
@@ -928,7 +735,7 @@ void DetectorDriver::ReadCalXml() {
             }
             if (!calibrated && verbose) {
                 stringstream ss;
-                ss << "Module " << module_number << ", channel " 
+                ss << "Module " << module_number << ", channel "
                    << ch_number << ": ";
                 ss << " non-calibrated";
                 m.detail(ss.str(), 1);
@@ -968,7 +775,7 @@ void DetectorDriver::ReadWalkXml() {
                 walkcorr; walkcorr = walkcorr.next_sibling("WalkCorrection")) {
                 string model = walkcorr.attribute("model").as_string("None");
                 double min = walkcorr.attribute("min").as_double(0);
-                double max = 
+                double max =
                   walkcorr.attribute("max").as_double(
                                               numeric_limits<double>::max());
 
@@ -977,14 +784,14 @@ void DetectorDriver::ReadWalkXml() {
                 while (true) {
                     double p;
                     pars >> p;
-                    if (pars) 
+                    if (pars)
                         parameters.push_back(p);
                     else
                         break;
                 }
                 if (verbose) {
                     stringstream ss;
-                    ss << "Module " << module_number 
+                    ss << "Module " << module_number
                        << ", channel " << ch_number << ": ";
                     ss << " model: " << model;
                     for (vector<double>::iterator it = parameters.begin();
@@ -997,7 +804,7 @@ void DetectorDriver::ReadWalkXml() {
             }
             if (!corrected && verbose) {
                 stringstream ss;
-                ss << "Module " << module_number << ", channel " 
+                ss << "Module " << module_number << ", channel "
                 << ch_number << ": ";
                 ss << " not corrected for walk";
                 m.detail(ss.str(), 1);
