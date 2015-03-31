@@ -4,16 +4,24 @@ SHELL=/bin/sh
 
 # Uncomment the following line for root functionality
 # USEROOT = 1
+
 # Uncomment this line for a more verbose scan
 # CXXFLAGS += -DVERBOSE
+
 # Undefine to make a "online" version
 # ONLINE = 1
+#
 # Define to see debugging information for TreeCorrelator
 #DEBUG = 1
+
 #Uncomment this line to use the Pulse Fitting routine
 PULSEFIT = 1
+
 # Define to use Gamma-Gamma gates in GeProcessor
 # GGATES = 1
+
+# ACQ2 libraries in HHIRF directory
+LIBS_IN_HHIRF = 1
 
 # We'll do some tests here to find if environment variables have been set
 ifeq ($(HHIRF_GFORTRAN),)
@@ -129,7 +137,8 @@ READBUFFDATAAO    = ReadBuffData.RevA.$(ObjSuf)
 BARDETECTORO     = BarDetector.$(ObjSuf)
 BARBUILDERO      = BarBuilder.$(ObjSuf)
 BEAMLOGICPROCESSORO  = BeamLogicProcessor.$(ObjSuf)
-BETASCINTPROCESSORO  = BetaScintProcessor.$(ObjSuf)
+BETASCINTPROCESSORO = BetaScintProcessor.$(ObjSuf)
+BETA4HEN3PROCESSORO = Beta4Hen3Processor.$(ObjSuf)
 CALIBRATORO      = Calibrator.$(ObjSuf)
 CFDANALYZERO     = CfdAnalyzer.$(ObjSuf)
 CHANEVENTO       = ChanEvent.$(ObjSuf)
@@ -140,9 +149,11 @@ DETECTORSUMMARYO = DetectorSummary.$(ObjSuf)
 DOUBLETRACEO     = DoubleTraceAnalyzer.$(ObjSuf)
 DOUBLEBETAPROCESSORO = DoubleBetaProcessor.$(ObjSuf)
 DSSDPROCESSORO   = DssdProcessor.$(ObjSuf)
+DSSD4SHEPROCESSORO = Dssd4SHEProcessor.$(ObjSuf)
 EVENTPROCESSORO  = EventProcessor.$(ObjSuf)
 FITTINGANALYZERO = FittingAnalyzer.$(ObjSuf)
 GEPROCESSORO     = GeProcessor.$(ObjSuf)
+GE4HEN3PROCESSORO= Ge4Hen3Processor.$(ObjSuf)
 GECALIBPROCESSORO= GeCalibProcessor.$(ObjSuf)
 GLOBALSO         = Globals.$(ObjSuf)
 HEN3PROCESSORO   = Hen3Processor.$(ObjSuf)
@@ -167,6 +178,7 @@ ROOTPROCESSORO   = RootProcessor.$(ObjSuf)
 PLACEBUILDERO    = PlaceBuilder.$(ObjSuf)
 PLACESO          = Places.$(ObjSuf)
 PULSERPROCESSORO = PulserProcessor.$(ObjSuf)
+SHECORRELATORO   = SheCorrelator.$(ObjSuf)
 SSDPROCESSORO    = SsdProcessor.$(ObjSuf)
 STATSDATAO       = StatsData.$(ObjSuf)
 TAUANALYZERO     = TauAnalyzer.$(ObjSuf)
@@ -193,13 +205,14 @@ CXX_OBJS = $(READBUFFDATAAO) $(READBUFFDATADFO)
 
 # Core Objects
 CXX_OBJS += $(PUGIXMLO) $(PIXIEO) $(BARBUILDERO) $(BARDETECTORO) $(CALIBRATORO)\
-	$(CORRELATORO) $(CHANEVENTO) $(DETECTORDRIVERO) $(DETECTORLIBRARYO)\
-	$(DETECTORSUMMARYO) $(EVENTPROCESSORO) $(GLOBALSO) $(IDENTIFIERO) \
-	$(INITIALIZEO) $(MESSENGERO) $(NOTEBOOKO) $(RANDOMPOOLO) $(RAWEVENTO)\
-	$(STATSDATAO) $(TIMINGCALO) $(TIMINGMAPBUILDERO) $(WALKCORRECTORO)
+ $(CORRELATORO) $(CHANEVENTO) $(DETECTORDRIVERO)\
+ $(DETECTORLIBRARYO) $(DETECTORSUMMARYO) $(EVENTPROCESSORO) $(GLOBALSO)\
+ $(IDENTIFIERO) $(INITIALIZEO) $(MESSENGERO) $(NOTEBOOKO) $(RANDOMPOOLO)\
+ $(RAWEVENTO) $(STATSDATAO) $(TIMINGCALO) $(TIMINGMAPBUILDERO)\
+ $(WALKCORRECTORO)
 
 #Correlation Objects
-CXX_OBJS += $(PLACEBUILDERO) $(PLACESO) $(TREECORRELATORO)
+CXX_OBJS += $(PLACEBUILDERO) $(PLACESO) $(TREECORRELATORO) $(SHECORRELATORO)
 
 #Plotting Related Objects
 CXX_OBJS += $(HISTOGRAMMERO) $(PLOTSO) $(PLOTSREGISTERO)
@@ -211,8 +224,9 @@ CXX_OBJS += $(CFDANALYZERO) $(DOUBLETRACEO) $(FITTINGANALYZERO)\
 
 #Processors
 CXX_OBJS += $(BEAMLOGICPROCESSORO) $(BETASCINTPROCESSORO)\
-	$(DSSDPROCESSORO) $(DOUBLEBETAPROCESSORO) $(GEPROCESSORO)\
-	$(GECALIBPROCESSORO) $(HEN3PROCESSORO)\
+	$(BETA4HEN3PROCESSORO) $(DSSDPROCESSORO) $(DSSD4SHEPROCESSORO)\
+	$(DOUBLEBETAPROCESSORO) $(GEPROCESSORO)\
+	$(GE4HEN3PROCESSORO) $(GECALIBPROCESSORO) $(HEN3PROCESSORO)\
 	$(ISSDPROCESSORO) $(IONCHAMBERPROCESSORO) $(LIQUIDSCINTPROCESSORO)\
 	$(LOGICPROCESSORO) $(MCPPROCESSORO) $(MTCPROCESSORO)\
 	$(NEUTRONSCINTPROCESSORO) $(POSITIONPROCESSORO) $(PULSERPROCESSORO)\

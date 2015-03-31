@@ -23,31 +23,27 @@ namespace dammIds {
         */
 
         const unsigned int MAX_CLOVERS = 4; //!< for *_DETX spectra
-        const unsigned int MAX_TIMEX = 5; //!< for *_TIMEX spectra
+        const unsigned int MAX_TIMEX = 4; //!< for *_TIMEX spectra
 
         const int D_ENERGY = 0;//!< Energy
-        const int D_ENERGY_CLOVERX = 2; //!< Energy Full Clover
+        const int D_ENERGY_LOW = 2;//!< Energy LG
         const int D_ENERGY_MOVE = 6;//!< Energy during move
         const int D_MULT = 9;//!< Multiplicity
         const int D_ADD_ENERGY = 50; //!< Addback energy
-        const int D_ADD_ENERGY_CLOVERX = 55;//!< Add back energy per clover
         const int D_ADD_ENERGY_TOTAL = 59;//!< Addback energy total
 
         const int DD_ENERGY = 100;//!< Gamma-Gamma Energy
         const int DD_ENERGY_PROMPT = 101;//!< Gamma-Gamma Spectra - Prompt
-        const int DD_ENERGY_CGATE1 = 102;//!< Gamma-Gamma - Cycle Gate 1
-        const int DD_ENERGY_CGATE2 = 103;//!< Gamma-Gamma - Cycle Gate 2
+        const int DD_ENERGY_LOW = 102;//!< Gamma-Gamma Energy
 
-        const int DD_TDIFF__GATEX = 105;//!< Tdiff Gamma - Beta - Gated
-        const int DD_ENERGY__GATEX = 106;//!< Energy - Gated
-        const int DD_ANGLE__GATEX = 107;//!< Gamma Angle - Gated
+        const int DD_TDIFF__GATEX = 103;//!< Tdiff Gamma - Beta - Gated
+        const int DD_ENERGY__GATEX = 104;//!< Energy - Gated
 
-        const int DD_ENERGY__TIMEX = 120;//!< Energy vs. Time
+        const int DD_ENERGY__TIMEX = 105;//!< Energy vs. Time
 
         const int DD_ADD_ENERGY = 150;//!< Addback Energy
 
         const int DD_TDIFF__GAMMA_GAMMA_ENERGY = 155;//!< Tdiff vs Gamma-Gamma Energy
-        const int DD_TDIFF__GAMMA_GAMMA_ENERGY_SUM = 156;//!< Tdiff vs. Gamma-Gamma Energy sum
 
         const int DD_ADD_ENERGY__TIMEX = 170;//!< Addback Energy vs. Time
 
@@ -55,29 +51,24 @@ namespace dammIds {
         namespace betaGated {
             const int D_ENERGY = 10;//!< Beta Gated Energy
             const int D_ENERGY_PROMPT = 11;//!< Beta Gated Prompt Energy
-            const int D_ENERGY_CLOVERX = 12;//!< Beta Gated Clover Energy
+            const int D_ENERGY_LOW = 12;//!< Beta Gated Energy Low Gain
             const int D_ENERGY_MOVE = 16;//!< Beta Gated Energy during Move
-            const int D_ENERGY_BETA0 = 17;//!< Energy Beta 0
-            const int D_ENERGY_BETA1 = 18;//!< Energy Beta 1
-            const int DD_ENERGY__BETAGAMMALOC = 19;//!< Energy vs Beta-Gamma Loc
 
             const int D_ADD_ENERGY = 60;//!< Beta Gated Addback Energy
             const int D_ADD_ENERGY_PROMPT = 61;//!< Beta Gated Add Back Prompt Energy
-            const int D_ADD_ENERGY_CLOVERX = 65;//!< Beta Gated Addback Clover Energy
             const int D_ADD_ENERGY_TOTAL = 69;//!< Beta Gated Addback Total Energy
 
             const int DD_ENERGY = 110;//!< Beta Gated Gamma-Gamma
             const int DD_ENERGY_PROMPT = 111;//!< Beta Gated Gamma-Gamma Prompt
-            const int DD_ENERGY_CGATE1 = 112;//!< Beta Gated Gamma-Gamma Cycle 1
-            const int DD_ENERGY_CGATE2 = 113;//!< Beta Gated Gamma-Gamma Cycle 2
-            const int DD_ENERGY_BDELAYED = 114;//!< Beta Gated Gamma-Gamma Beta Delayed
+            const int DD_ENERGY_LOW = 112;//!< Beta Gated Gamma-Gamma LG
+            const int DD_ENERGY_BDELAYED = 113;//!< Beta Gated Gamma-Gamma Beta Delayed
+            const int DD_TDIFF__GATEX = 114;//!< Beta Gated Time Diff Gated
+            const int DD_ENERGY__GATEX = 115;//!< Beta Gated Energy Gated
 
-            const int DD_TDIFF__GATEX = 115;//!< Beta Gated Time Diff Gated
-            const int DD_ENERGY__GATEX = 116;//!< Beta Gated Energy Gated
-            const int DD_ANGLE__GATEX = 117;//!< Beta Gated Angle Gated
 
             const int DD_TDIFF__GAMMA_ENERGY = 118; //!< Beta Gated TDiff vs. Gamma Energy
             const int DD_TDIFF__BETA_ENERGY = 119;//!< Beta Gated Tdiff vs. Beta Energy
+            const int DD_TDIFF__GAMMA_ENERGY_LOW = 120; //!< Beta Gated TDiff vs. Gamma Energy Low Gain
 
             const int DD_ENERGY__TIMEX = 130;//!< Beta Gated Energy vs. Time
             const int DD_ENERGY__TIMEX_GROW = 135;//!< Beta Gated Energy vs. Grow Cycle
@@ -182,15 +173,10 @@ public:
      * \param [in] subEventWindow : the size of the subevent
      * \param [in] gammaBetaLimit : the amount of time to consider beta-gamma correlations
      * \param [in] gammaGammaLimit : the amount of time to consider gamma-gamma correlations
-     * \param [in] cycle_gate1_min : the minimum range for the first cycle gate
-     * \param [in] cycle_gate1_max : the maximum range for the first cycle gate
-     * \param [in] cycle_gate2_min : the minimum range for the second cycle gate
-     * \param [in] cycle_gate2_max : the maximum range for the second cycle gate */
+     */
     GeProcessor(double gammaThreshold, double lowRatio,
                 double highRatio, double subEventWindow,
-                double gammaBetaLimit, double gammaGammaLimit,
-                double cycle_gate1_min, double cycle_gate1_max,
-                double cycle_gate2_min, double cycle_gate2_max);
+                double gammaBetaLimit, double gammaGammaLimit);
     /** Preprocess the event
      * \param [in] event : the event to preprocess
      * \return true if successful */
@@ -222,6 +208,8 @@ protected:
 
     /** Preprocessed good ge events, filled in PreProcess.*/
     std::vector<ChanEvent*> geEvents_;
+    /** Preprocessed good low sensitivity ge events, filled in PreProcess.*/
+    std::vector<ChanEvent*> geEventsLow_;
 
     /** Declares a histogram with a range of granularities
      * \param [in] dammId : the dammID to plot
@@ -272,13 +260,5 @@ protected:
 
     /** Prompt Gamma-gamma limit in seconds */
     double gammaGammaLimit_;
-
-    /** Cycle gates replace early/high limits. Gate set on cycle in time
-     * allows to check the gamma-gamma coincidences within the chosen
-     * range of cycle (e.g 1 - 1.5 s) */
-    double cycle_gate1_min_; //!< low value for first cycle gate
-    double cycle_gate1_max_;//!< high value for first cycle gate
-    double cycle_gate2_min_;//!< low value for second cycle gate
-    double cycle_gate2_max_;//!< high value for second cycle gate
 };
 #endif // __GEPROCESSOR_HPP_

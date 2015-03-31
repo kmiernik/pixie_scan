@@ -116,18 +116,18 @@ Globals::Globals() {
         for (pugi::xml_node time = reject.child("Time"); time;
             time = time.next_sibling("Time")) {
             int start = time.attribute("start").as_int(-1);
-            int end = time.attribute("end").as_int(-1);
+            int stop = time.attribute("stop").as_int(-1);
 
             std::stringstream ss;
-            if (start < 0 || end < 0 || start > end) {
+            if (start < 0 || stop < 0 || start > stop) {
                 ss << "Globals: incomplete or wrong rejection region "
-                <<  "declaration: " << start << ", " << end;
+                <<  "declaration: " << start << ", " << stop;
                 throw GeneralException(ss.str());
             }
 
-            ss << "Rejection region: " << start << " to " << end << " s";
+            ss << "Rejection region: " << start << " to " << stop << " s";
             m.detail(ss.str(), 1);
-            std::pair<int, int> region(start, end);
+            std::pair<int, int> region(start, stop);
             reject_.push_back(region);
         }
 

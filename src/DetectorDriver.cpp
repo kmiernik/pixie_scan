@@ -24,11 +24,14 @@
 
 #include "BeamLogicProcessor.hpp"
 #include "BetaScintProcessor.hpp"
+#include "Beta4Hen3Processor.hpp"
 #include "DoubleBetaProcessor.hpp"
 #include "DssdProcessor.hpp"
+#include "Dssd4SHEProcessor.hpp"
 #include "Hen3Processor.hpp"
 #include "GeProcessor.hpp"
 #include "GeCalibProcessor.hpp"
+#include "Ge4Hen3Processor.hpp"
 #include "ImplantSsdProcessor.hpp"
 #include "IonChamberProcessor.hpp"
 #include "LiquidScintProcessor.hpp"
@@ -115,7 +118,10 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
         throw IOException(ss.str());
     }
 
-    DetectorLibrary::get();
+    /** Force to create Detector Library before loading processors.
+     * It is not needed but the output looks nicer ;)
+     */
+    DetectorLibrary* modChan = DetectorLibrary::get();
 
     pugi::xml_node driver = doc.child("Configuration").child("DetectorDriver");
     for (pugi::xml_node processor = driver.child("Processor"); processor;
@@ -126,8 +132,8 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
         if (name == "BeamLogicProcessor") {
             vecProcess.push_back(new BeamLogicProcessor());
         }
-        else if (name == "BetaScintProcessor") {
-            double gamma_beta_limit =
+        else if (name == "BetaScintProcessor" || name == "Beta4Hen3Processor") {
+            double gamma_beta_limit = 
                 processor.attribute("gamma_beta_limit").as_double(-1);
             if (gamma_beta_limit == -1) {
                 gamma_beta_limit = 200e-9;
@@ -145,10 +151,66 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
                 vecProcess.push_back(
                         new BetaScintProcessor(gamma_beta_limit,
                                                energy_contraction));
+            else if (name == "Beta4Hen3Processor")
+                vecProcess.push_back(
+                        new Beta4Hen3Processor(gamma_beta_limit,
+                                               energy_contraction));
         } else if (name == "DssdProcessor") {
             vecProcess.push_back(new DssdProcessor());
-        } else if (name == "GeProcessor") {
-            double gamma_threshold =
+        } else if (name == "Dssd4SHEProcessor") {
+            double front_back_correlation_time = 
+               processor.attribute("front_back_correlation_time").as_double(-1);
+            if (front_back_correlation_time == -1) {
+                front_back_correlation_time = 300e-9;
+                m.warning("Using default front_back_correlation_time = 300e-9",
+                          1);
+            }
+            double delta_energy = 
+               processor.attribute("delta_energy").as_double(-1);
+            if (delta_energy == -1) {
+                delta_energy = 300;
+                m.warning("Using default delta_energy = 300", 1);
+            }
+            double high_energy_cut = 
+                processor.attribute("high_energy_cut").as_double(-1);
+            if (high_energy_cut == -1) {
+                high_energy_cut = 15000.0;
+                m.warning("Using default high_energy_cut = 15000", 1);
+            }
+            double low_energy_cut = 
+                processor.attribute("low_energy_cut").as_double(-1);
+            if (low_energy_cut == -1) {
+                low_energy_cut = 8000.0;
+                m.warning("Using default low_energy_cut = 8000", 1);
+            }
+            double fission_energy_cut = 
+                processor.attribute("fission_energy_cut").as_double(-1);
+            if (low_energy_cut == -1) {
+                low_energy_cut = 50000.0;
+                m.warning("Using default fission_energy_cut = 50000", 1);
+            }
+
+            stringstream ss;
+            unsigned num_front_strips =  
+                modChan->GetLocations("dssd_front", "dssd_front").size();
+            ss << "Found " << num_front_strips << " front strips (Y)";
+            m.detail(ss.str(), 1);
+            unsigned num_back_strips =  
+                modChan->GetLocations("dssd_back", "dssd_back").size();
+            ss.str("");
+            ss << "Found " << num_back_strips << " back strips (X)";
+            m.detail(ss.str(), 1);
+
+            vecProcess.push_back(new
+                    Dssd4SHEProcessor(front_back_correlation_time,
+                                      delta_energy,
+                                      high_energy_cut,
+                                      low_energy_cut,
+                                      fission_energy_cut,
+                                      num_back_strips,
+                                      num_front_strips));
+        } else if (name == "GeProcessor" || name == "Ge4Hen3Processor") {
+            double gamma_threshold = 
                 processor.attribute("gamma_threshold").as_double(-1);
             if (gamma_threshold == -1) {
                 gamma_threshold = 1.0;
@@ -211,9 +273,11 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
             if (name == "GeProcessor") {
                 vecProcess.push_back(new GeProcessor(gamma_threshold,
                             low_ratio, high_ratio, sub_event,
-                            gamma_beta_limit, gamma_gamma_limit,
-                            cycle_gate1_min, cycle_gate1_max,
-                            cycle_gate2_min, cycle_gate2_max));
+                            gamma_beta_limit, gamma_gamma_limit));
+            } else if (name == "Ge4Hen3Processor") {
+                vecProcess.push_back(new Ge4Hen3Processor(gamma_threshold,
+                            low_ratio, high_ratio, sub_event,
+                            gamma_beta_limit, gamma_gamma_limit));
             }
         } else if (name == "GeCalibProcessor") {
             double gamma_threshold =

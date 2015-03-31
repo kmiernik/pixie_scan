@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Configuration>
-    <!-- Instructions:
+    <!-- This is an example configuration file based on a real experiment.
+         Copy this file and modify its content to setup your experiment.-->
+
+    <!-- Instructions: 
          Put here your name, email and date (please use Jan, Feb, ..., Dec
          for months names).
      -->
     <Author>
-        <Name>S. V. Paulauskas</Name>
-        <Email>stanpaulauskas@gmail.com</Email>
-        <Date>October 19, 2014</Date>
+        <Name>Krzysztof Miernik</Name>
+        <Email>k.a.miernik@gmail.com</Email>
+        <Date>Apr 2015</Date>
     </Author>
 
     <!-- Instructions:
@@ -49,7 +52,17 @@
     </Global>
 
     <!-- Sets a rejection region for the data. The time is in seconds and the
-            program will skip any buffers that arrive between these times -->
+            program will skip any buffers that arrive between these times
+        Notice that this field should be used for single file scanning
+         mode, otherwise the rejection regions apply to each file.
+
+         Example:
+        <Reject>
+            <Time start="1000" end="1200"/>
+            <Time start="2000" end="2150"/>
+        </Reject>
+        You may define any number of regions to reject.
+    -->
     <Reject>
         <Time start="300" stop="16000"/>
     </Reject>
@@ -64,7 +77,14 @@
          List of known Processors:
             * BeamLogicProcessor
             * BetaScintProcessor
+            * Beta4Hen3Processor
             * DssdProcessor
+            * Dssd4SHEProcessor
+               * optional attributes and their default values:
+                  * front_back_correlation_time="300e-9"
+                  * delta_energy="300"
+                  * high_energy_cut="15000"
+                  * low_energy_cut="8000"
             * GeProcessor
                * optional attributes and their default values:
                   * gamma_threshold="1.0"
@@ -73,10 +93,8 @@
                   * sub_event="100e-9"
                   * gamma_beta_limit="200e-9"
                   * gamma_gamma_limit="200e-9"
-                  * cycle_gate1_min="0.0"
-                  * cycle_gate1_max="0.0"
-                  * cycle_gate2_min="0.0"
-                  * cycle_gate2_max="0.0"
+            * Ge4Hen3Processor
+                * see comment above
             * GeCalibProcessor
                * optional attributes and their default values:
                   * gamma_threshold="1.0"
@@ -135,6 +153,21 @@
         <Processor name="PulserProcessor" />
         <Analyzer name="WaveformAnalyzer"/>
         <Analyzer name="FittingAnalyzer"/>
+
+        <!-- Some more advanced example
+        <Processor name="GeProcessor"
+            gamma_threshold="20.0"
+            low_ratio="1.5"
+            high_ratio="3.0"
+            sub_event="100e-9"
+            gamma_beta_limit="200e-9"
+            gamma_gamma_limit="200e-9"
+            />
+        <Processor name="MtcProcessor" 
+            double_stop="True"
+            double_start="True"/>
+        <Processor name="BetaScintProcessor" />
+        -->
     </DetectorDriver>
 
     <!-- Instructions:
@@ -165,6 +198,7 @@
                 two above - requires at least 1 parameter
             * hyplin - f(x) = a0/x + a1 + a2*x , suitable if problems with
                 low channels are encountered - requires 3 parameters
+            * exponential - requires 3 parameters a0 * exp(x / a1) + a2
         Time Walk:
             * None - returns always 0
             * A - f(x) = a0 + a1 / (a2 + x) + a3 * exp(-x/a4), derived for
