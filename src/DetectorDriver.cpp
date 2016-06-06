@@ -246,30 +246,6 @@ void DetectorDriver::LoadProcessors(Messenger& m) {
                 gamma_gamma_limit = 200e-9;
                 m.warning("Using default gamma_gamma_limit = 200e-9", 1);
             }
-            double cycle_gate1_min =
-                processor.attribute("cycle_gate1_min").as_double(-1);
-            if (cycle_gate1_min == -1) {
-                cycle_gate1_min = 0.0;
-                m.warning("Using default cycle_gate1_min = 0.0", 1);
-            }
-            double cycle_gate1_max =
-                processor.attribute("cycle_gate1_max").as_double(-1);
-            if (cycle_gate1_max == -1) {
-                cycle_gate1_max = 0.0;
-                m.warning("Using default cycle_gate1_max = 0.0", 1);
-            }
-            double cycle_gate2_min =
-                processor.attribute("cycle_gate2_min").as_double(-1);
-            if (cycle_gate2_min == -1) {
-                cycle_gate2_min = 0.0;
-                m.warning("Using default cycle_gate2_min = 0.0", 1);
-            }
-            double cycle_gate2_max =
-                processor.attribute("cycle_gate2_max").as_double(-1);
-            if (cycle_gate2_max == -1) {
-                cycle_gate2_max = 0.0;
-                m.warning("Using default cycle_gate2_max = 0.0", 1);
-            }
             if (name == "GeProcessor") {
                 vecProcess.push_back(new GeProcessor(gamma_threshold,
                             low_ratio, high_ratio, sub_event,

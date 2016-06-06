@@ -10,7 +10,7 @@
 
     <Global>
         <Revision version="F"/>
-        <EventWidth unit="s" value="50e-6"/>
+        <EventWidth unit="s" value="25e-6"/>
         <EnergyContraction value="1.0"/>
         <Path>config/</Path>
     </Global>
@@ -23,10 +23,6 @@
             sub_event="100e-9"
             gamma_beta_limit="200e-9"
             gamma_gamma_limit="200e-9"
-            cycle_gate1_min="2.0"
-            cycle_gate1_max="2.2"
-            cycle_gate2_min="2.5"
-            cycle_gate2_max="3.0"
             />
         <!--
         <Processor name="GeCalibProcessor" />
@@ -302,9 +298,11 @@
             </Gate>
         </GammaGates>
 
+    <!--
     <Reject>
-        <Time start="0" end="1275"/>
+        <Time start="0" stop="1275"/>
     </Reject>
+    -->
 
     <Notebook file='83ga_notes.txt' mode='a'/>
 
