@@ -359,7 +359,7 @@ bool ImplantSsdProcessor::Process(RawEvent &event)
 	    int ntof = (*it)->GetChanID().GetLocation();
 
 	    plot(DD_ALL_ENERGY__TOFX + ntof - 1, info.energy, tof);
-	    if (!isnan(digitalTof) && digitalTof > 1500. && digitalTof < 2000)
+	    if (!std::isnan(digitalTof) && digitalTof > 1500. && digitalTof < 2000)
 		plot(DD_ALL_ENERGY__TOFX_GATED + ntof - 1, info.energy, tof);
 	    if (info.type == EventInfo::IMPLANT_EVENT) {
 		plot(DD_IMPLANT_ENERGY__TOFX + ntof - 1, info.energy, tof);
@@ -368,7 +368,7 @@ bool ImplantSsdProcessor::Process(RawEvent &event)
 	    }
 	}
 	// TAC channel 0 is missing, so use it for the digital tof
-	if (!isnan(digitalTof)) {
+	if (!std::isnan(digitalTof)) {
 	    plot(DD_ALL_ENERGY__TOFX, info.energy, digitalTof);
 	    if (info.type == EventInfo::IMPLANT_EVENT) {
 		plot(DD_IMPLANT_ENERGY__TOFX, info.energy, digitalTof);
@@ -432,7 +432,7 @@ bool ImplantSsdProcessor::Process(RawEvent &event)
         }
     }
 
-    if (info.energy > 10000 && !ch->IsSaturated() && !isnan(info.position) ) {
+    if (info.energy > 10000 && !ch->IsSaturated() && !std::isnan(info.position) ) {
 	corr.Flag(location, info.position);
     }
 
@@ -572,7 +572,7 @@ void ImplantSsdProcessor::PlotType(EventInfo &info, int loc, Correlator::ECondit
  */
 void ImplantSsdProcessor::Correlate(Correlator &corr, EventInfo &info, int location)
 {
-    if ( isnan(info.position) ) {
+    if ( std::isnan(info.position) ) {
 	corr.CorrelateAllY(info, location);
     } else {
 	corr.Correlate(info, location, int(info.position));

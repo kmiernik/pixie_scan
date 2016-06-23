@@ -201,7 +201,7 @@ void FittingAnalyzer::Analyze(Trace &trace, const std::string &detType,
     	    break;
     }
 
-    gsl_multifit_covar (s->J, 0.0, covar);
+    //gsl_multifit_covar (J, 0.0, covar);
 
     if(detType != "beta" && detSubtype != "double") {
         phase = gsl_vector_get(s->x,0);
