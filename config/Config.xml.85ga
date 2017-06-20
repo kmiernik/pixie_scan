@@ -21,8 +21,8 @@
             low_ratio="1.5"
             high_ratio="3.0"
             sub_event="100e-9"
-            gamma_beta_limit="200e-9"
-            gamma_gamma_limit="200e-9"
+            gamma_beta_limit="500e-9"
+            gamma_gamma_limit="500e-9"
             cycle_gate1_min="2.0"
             cycle_gate1_max="2.2"
             cycle_gate2_min="2.5"
@@ -293,6 +293,21 @@
                 <Line min="810" max="815"/>
             </Gate>
     </GammaGates>
+
+    <Reject>
+        <!-- a85_13.ldf -->
+        <!--
+        <Time start="11964" stop="11968"/>
+        -->
+        <!-- a85_14.ldf -->
+        <!--
+        <Time start="12360" stop="12363"/>
+        <Time start="14239" stop="14242"/>
+        <Time start="15539" stop="15543"/>
+        -->
+        <!-- a85_15.ldf -->
+        <Time start="7392" stop="7396"/>
+    </Reject>
 
     <Notebook file='85ga_notes.txt' mode='a'/>
 

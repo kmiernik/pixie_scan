@@ -70,6 +70,7 @@ void Beta4Hen3Processor::DeclarePlots(void) {
     DeclareHistogram2D(neutron::DD_ENERGY_BETA__GAMMA, energyBins, SC, 
                         title.str().c_str()); 
 
+    title.str("");
     title << "Neutron-gated Beta " << title_end.str();
     DeclareHistogram2D(neutron::DD_ENERGY_BETA__TIME_TOTAL, energyBins,
                        timeBins, title.str().c_str()); 

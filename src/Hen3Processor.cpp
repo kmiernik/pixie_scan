@@ -24,6 +24,7 @@ namespace dammIds {
         const int D_ENERGY_NEUTRON = 3;//!< Neutron Energy
         const int D_ENERGY_HEN3_TAPE = 4;//!< Energy
         const int D_TIME_NEUTRON = 7;//!< Neutron Time
+        const int D_TIME_NEUTRON_TAPE = 8;//!< Neutron Time
 
         namespace beta {
             const int D_MULT_NEUTRON = 11;//!< Beta Gated Neutron Multiplicity
@@ -87,7 +88,9 @@ void Hen3Processor::DeclarePlots(void) {
             "3Hen raw energy, tape move period");
 
     DeclareHistogram1D(D_TIME_NEUTRON, SD,
-            "Neutron events vs cycle time (1 ms / bin");
+            "Neutron events vs cycle time (1 ms / bin)");
+    DeclareHistogram1D(D_TIME_NEUTRON_TAPE, SD,
+            "Neutron events vs cycle time (1 ms / bin) tape move");
 
     DeclareHistogram2D(DD_DISTR_HEN3, S5, S5, "3Hen event distribution");
     DeclareHistogram2D(DD_DISTR_NEUTRON, S5, S5,
@@ -141,7 +144,18 @@ bool Hen3Processor::Process(RawEvent &event) {
                  hen3Summary->GetList().begin();
              it != hen3Summary->GetList().end(); it++) {
                 double energy = (*it)->GetEnergy();
+                double time = (*it)->GetTime();
+                int location = (*it)->GetChanID().GetLocation();
                 plot(D_ENERGY_HEN3_TAPE, energy);
+                stringstream neutron_name;
+                neutron_name << "Neutron_" << location;
+                if (TreeCorrelator::get()->place(neutron_name.str())->status())
+                {
+                    double decayTime = (time - cycleTime) * clockInSeconds;
+                    int decayTimeBin = int(decayTime /
+                                        cycleTimePlotResolution_);
+                    plot(D_TIME_NEUTRON_TAPE, decayTimeBin);
+                }
         }
         return true;
     }

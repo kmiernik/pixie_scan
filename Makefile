@@ -301,6 +301,7 @@ clean:
 	src/*~ include/*~ scan/*~
 tidy:
 	@echo "Tidying up..."
-	@rm -f core *~ ./src/*~ ./include/*~ ./scan/*~ *.save
+	@rm -f ./$(FORT_OBJDIR)/*.o ./$(CXX_OBJDIR)/*.o core *~ *.save \
+	src/*~ include/*~ scan/*~
 doc: doc/Doxyfile
 	@doxygen $^

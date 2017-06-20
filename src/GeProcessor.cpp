@@ -705,6 +705,19 @@ bool GeProcessor::Process(RawEvent &event) {
                 EventData bestBeta = BestBetaForGamma(gTime);
                 gb_dtime = (gTime - bestBeta.time) * clockInSeconds;
 
+                // Notebook for MLH for T1/2 measurement from 624 keV line
+                if ((gEnergy > 623.7) && (gEnergy < 624.7))
+                {
+                    int neutron_count = 
+                    dynamic_cast<PlaceCounter*>(
+                        TreeCorrelator::get()->place("Neutrons"))->getCounter();
+                    stringstream ss;
+                    ss << gEnergy << "\t" 
+                    << decayTime << "\t" 
+                    << gb_dtime << "\t" 
+                    << neutron_count << endl;
+                    Notebook::get()->report(ss.str());
+                }
                 plot(betaGated::D_ADD_ENERGY, gEnergy);
                 if (gMulti == 1)
                     plot(multi::betaGated::D_ADD_ENERGY, gEnergy);

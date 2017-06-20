@@ -48,6 +48,7 @@ namespace dammIds {
             const int DD_ADD_ENERGY = 252;
             const int D_ADD_ENERGY_TOTAL = 255;
             const int DD_ADD_ENERGY__TIMEX = 271;
+            const int DD_ADD_ENERGY__TIME_GN = 261; 
 
             namespace betaGated {
                 const int D_ENERGY = 210;
@@ -57,6 +58,7 @@ namespace dammIds {
 
                 const int D_ADD_ENERGY = 260; 
                 const int D_ADD_ENERGY_TOTAL = 265;
+
                 const int DD_ADD_ENERGY = 262;
                 const int DD_ADD_ENERGY__TIMEX = 281;
             } 
@@ -131,6 +133,9 @@ void Ge4Hen3Processor::DeclarePlots(void)
     DeclareHistogramGranY(neutron::DD_ADD_ENERGY__TIMEX,
                           energyBins2, granTimeBins,
                           "Addback E - Time", 2, timeResolution, "s");
+    DeclareHistogram2D(neutron::DD_ADD_ENERGY__TIME_GN,
+                          energyBins2, S8,
+                          "Addback E - Time diff gamma neutron (us)");
 
     DeclareHistogram1D(neutron::betaGated::D_ENERGY, energyBins1,
                        "Gamma singles beta neutron gated");
@@ -357,6 +362,10 @@ bool Ge4Hen3Processor::Process(RawEvent &event) {
             plot(neutron::D_ADD_ENERGY, gEnergy);
             granploty(neutron::DD_ADD_ENERGY__TIMEX, gEnergy,
                       decayTime, timeResolution);
+            double gn_dtime =  clockInSeconds * (
+                    TreeCorrelator::get()->place("Neutrons")->last().time -
+                    gTime);
+            plot(neutron::DD_ADD_ENERGY__TIME_GN, gEnergy, gn_dtime / 1e-6);
 
             double gb_dtime = numeric_limits<double>::max();
             if (hasBeta) {
